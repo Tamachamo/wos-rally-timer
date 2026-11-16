@@ -9,7 +9,7 @@
 <body>
   <header class="header">
     <h1>❄️ ホワサバ 集結・差し込み共有タイマー</h1>
-    <p class="subtitle">URLを共有すると、入力した集結・行軍タイマーが全員にリアルタイム同期されます</p>
+    <p id="headerSubtitle" class="subtitle">URLを共有すると、入力した集結・行軍タイマーが全員にリアルタイム同期されます</p>
   </header>
 
   <main class="container">
@@ -18,14 +18,16 @@
       <div class="share-info">
         <span id="syncStatus" class="sync-badge">🔄 接続中...</span>
         <span class="room-label">部屋ID: <strong id="roomIdDisplay">---</strong></span>
+        <span id="modeBadge" class="mode-badge">編集モード</span>
       </div>
-      <div class="share-actions">
-        <button id="copyUrlBtn" class="btn btn-primary btn-sm">🔗 共有URLをコピー</button>
+      <div class="share-actions" id="editShareActions">
+        <button id="copyViewUrlBtn" class="btn btn-success btn-sm">👀 見るだけURLをコピー</button>
+        <button id="copyEditUrlBtn" class="btn btn-primary btn-sm">✏️ 編集URLをコピー</button>
         <button id="newRoomBtn" class="btn btn-ghost btn-sm">＋ 新しい部屋を作る</button>
       </div>
     </section>
 
-    <!-- 自分の行軍時間（端末ごとに個別保存） -->
+    <!-- 自分の行軍時間（両モード共通・端末ごとに個別保存） -->
     <section class="my-march-box">
       <div class="my-march-header">
         <span class="badge">あなた専用（他の人には見えません）</span>
@@ -40,17 +42,17 @@
         </label>
         <button id="clearMyMarch" class="btn btn-ghost btn-sm">クリア</button>
       </div>
-      <p class="hint">※この数値はあなたのスマホ・PCだけに保存され、共有された各都市の着弾時間から「あなたが出発すべき残り時間」を自動計算します。</p>
+      <p class="hint">※この数値はあなたのスマホ・PCだけに保存され、各集結の着弾時間から「あなたが出発すべき残り時間」を自動計算します。</p>
     </section>
 
-    <!-- コントロールバー（全員に同期） -->
-    <div class="toolbar">
+    <!-- コントロールバー（編集モードのみ表示） -->
+    <div class="toolbar" id="editToolbar">
       <button id="addCityBtn" class="btn btn-primary">＋ 都市を追加</button>
       <button id="startAllBtn" class="btn btn-success">▶ すべて開始</button>
       <button id="resetAllBtn" class="btn btn-secondary">↺ すべてリセット</button>
     </div>
 
-    <!-- 都市カード一覧（全員に同期） -->
+    <!-- 都市カード一覧 -->
     <div id="cityList" class="city-grid"></div>
   </main>
 
