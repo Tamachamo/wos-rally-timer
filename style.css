@@ -1,0 +1,360 @@
+:root {
+  --bg: #0f172a;
+  --card-bg: #1e293b;
+  --card-border: #334155;
+  --text: #f8fafc;
+  --text-muted: #94a3b8;
+  --primary: #38bdf8;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Sans", "Noto Sans JP", sans-serif;
+  background-color: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+  padding-bottom: 3rem;
+}
+
+.header {
+  background: linear-gradient(135deg, #0c4a6e, #1e293b);
+  padding: 1.1rem 1rem;
+  text-align: center;
+  border-bottom: 1px solid var(--card-border);
+}
+
+.header h1 {
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+.subtitle {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+}
+
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+/* 共有URLバー */
+.share-box {
+  background-color: #172554;
+  border: 1px solid #3b82f6;
+  border-radius: 10px;
+  padding: 0.8rem 1rem;
+  margin-bottom: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.share-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.sync-badge {
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  background-color: #064e3b;
+  color: #6ee7b7;
+}
+
+.sync-badge.error {
+  background-color: #7f1d1d;
+  color: #fca5a5;
+}
+
+.room-label {
+  font-size: 0.85rem;
+  color: #cbd5e1;
+}
+
+.share-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* 自分の行軍時間ボックス */
+.my-march-box {
+  background-color: var(--card-bg);
+  border: 1px solid #0284c7;
+  border-radius: 10px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.my-march-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.my-march-header h2 {
+  font-size: 1rem;
+}
+
+.badge {
+  background-color: #0284c7;
+  color: #fff;
+  font-size: 0.7rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-weight: bold;
+}
+
+.hint {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-top: 0.4rem;
+}
+
+/* ツールバー */
+.toolbar {
+  display: flex;
+  gap: 0.6rem;
+  margin-bottom: 1.2rem;
+  flex-wrap: wrap;
+}
+
+/* ボタン共通 */
+.btn {
+  border: none;
+  border-radius: 8px;
+  padding: 0.6rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.05s;
+}
+
+.btn:active {
+  transform: scale(0.98);
+}
+
+.btn-sm {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.82rem;
+}
+
+.btn-primary {
+  background-color: var(--primary);
+  color: #0f172a;
+}
+
+.btn-success {
+  background-color: var(--success);
+  color: #0f172a;
+}
+
+.btn-warning {
+  background-color: var(--warning);
+  color: #0f172a;
+}
+
+.btn-secondary {
+  background-color: #475569;
+  color: #fff;
+}
+
+.btn-danger {
+  background-color: transparent;
+  color: var(--danger);
+  border: 1px solid var(--danger);
+}
+
+.btn-ghost {
+  background-color: #334155;
+  color: var(--text);
+}
+
+/* 都市グリッド */
+.city-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+  gap: 1rem;
+}
+
+.city-card {
+  background-color: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  transition: border-color 0.2s;
+}
+
+.city-card.is-running {
+  border-color: var(--success);
+}
+
+.city-card.is-marching {
+  border-color: var(--warning);
+}
+
+.city-card.is-arrived {
+  border-color: var(--danger);
+}
+
+.card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.city-name-input {
+  background-color: #0f172a;
+  border: 1px solid var(--card-border);
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 700;
+  padding: 0.45rem 0.65rem;
+  border-radius: 6px;
+  width: 100%;
+}
+
+.city-name-input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.input-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.time-inputs {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.time-inputs input[type="number"] {
+  width: 68px;
+  background-color: #0f172a;
+  border: 1px solid var(--card-border);
+  color: var(--text);
+  font-size: 1.05rem;
+  font-weight: 600;
+  padding: 0.4rem;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.time-inputs input[type="number"]:disabled {
+  opacity: 0.5;
+}
+
+/* 計算結果ディスプレイ */
+.result-panel {
+  background-color: #0f172a;
+  border-radius: 8px;
+  padding: 0.85rem;
+  border: 1px solid #334155;
+}
+
+.status-badge {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  margin-bottom: 0.4rem;
+  background-color: #334155;
+  color: #e2e8f0;
+}
+
+.status-waiting { background-color: #15803d; color: #fff; }
+.status-marching { background-color: #b45309; color: #fff; }
+.status-arrived { background-color: #b91c1c; color: #fff; }
+
+.arrival-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-top: 0.25rem;
+}
+
+.arrival-label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.arrival-time {
+  font-size: 1.75rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--primary);
+}
+
+.sub-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-top: 0.35rem;
+  padding-top: 0.35rem;
+  border-top: 1px dashed #334155;
+}
+
+.launch-alert {
+  margin-top: 0.5rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: 6px;
+  background-color: #1e293b;
+  font-size: 0.85rem;
+  font-weight: 700;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.launch-now {
+  background-color: #dc2626;
+  color: #fff;
+  animation: pulse 0.8s infinite alternate;
+}
+
+@keyframes pulse {
+  from { opacity: 1; }
+  to { opacity: 0.75; }
+}
+
+.card-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.card-actions .btn {
+  flex: 1;
+}
