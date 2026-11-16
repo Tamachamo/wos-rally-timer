@@ -15,6 +15,7 @@
   let lastSyncedUpdatedAt = 0;
   let lastLocalMutationAt = 0;
   let isSyncing = false;
+  let debounceTimer = null;
 
   // 1. 部屋IDの取得または生成（URLパラメータ ?room=xxxx）
   function generateRoomId() {
@@ -57,8 +58,9 @@
     saveMyMarchTime();
   });
 
-  // 3. 共有状態（cities）をサーバーへ保存
+  // 3. 共有状態（cities）をサーバーへ即座に保存
   async function pushStateToServer() {
+    clearTimeout(debounceTimer);
     const now = Date.now();
     lastLocalMutationAt = now;
     lastSyncedUpdatedAt = now;
@@ -75,7 +77,16 @@
     }
   }
 
-  // 4. サーバーから最新の共有状態を取得（ポーリング）
+  // 文字・数値入力中は0.3秒後に自動送信（打ち終わり即反映）
+  function schedulePushState() {
+    lastLocalMutationAt = Date.now();
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      pushStateToServer();
+    }, 300);
+  }
+
+  // 4. サーバーから最新の共有状態を取得（1秒ごとに自動同期）
   async function pullStateFromServer(isInitial = false) {
     if (isSyncing) return;
     isSyncing = true;
@@ -86,7 +97,6 @@
       setSyncStatus(true);
 
       if (data.cities === null) {
-        // 新規の部屋なら初期都市2つを作成して登録
         if (isInitial) {
           cities = [makeCityObj("集結 A"), makeCityObj("集結 B")];
           renderCities();
@@ -94,9 +104,9 @@
         }
       } else if (
         data.updatedAt > lastSyncedUpdatedAt &&
-        Date.now() - lastLocalMutationAt > 800
+        Date.now() - lastLocalMutationAt > 600
       ) {
-        // 他のメンバーが更新した場合、入力フォーカス中でなければ画面反映
+        // 他のメンバーが更新した場合、自分が入力中でなければ即座に画面反映
         const activeTag = document.activeElement?.tagName;
         const isTyping = activeTag === "INPUT";
         cities = data.cities;
@@ -114,7 +124,7 @@
 
   function setSyncStatus(ok) {
     if (ok) {
-      syncStatusEl.textContent = "🟢 全員とリアルタイム同期中";
+      syncStatusEl.textContent = "🟢 ルーム同期中（変更は全員に自動反映）";
       syncStatusEl.classList.remove("error");
     } else {
       syncStatusEl.textContent = "⚠️ 同期エラー（D1設定を確認）";
@@ -261,11 +271,11 @@
         </div>
       `;
 
-      // 入力確定（change）または入力中に同期送信
+      // 入力した瞬間に0.3秒後自動送信
       const nameInput = card.querySelector(".city-name-input");
-      nameInput.addEventListener("change", (e) => {
+      nameInput.addEventListener("input", (e) => {
         city.name = e.target.value;
-        pushStateToServer();
+        schedulePushState();
       });
 
       const marchMinInput = card.querySelector(".march-min");
@@ -273,10 +283,10 @@
       const syncMarch = () => {
         city.marchMin = Math.max(0, parseInt(marchMinInput.value, 10) || 0);
         city.marchSec = Math.max(0, parseInt(marchSecInput.value, 10) || 0);
-        pushStateToServer();
+        schedulePushState();
       };
-      marchMinInput.addEventListener("change", syncMarch);
-      marchSecInput.addEventListener("change", syncMarch);
+      marchMinInput.addEventListener("input", syncMarch);
+      marchSecInput.addEventListener("input", syncMarch);
 
       const waitMinInput = card.querySelector(".wait-min");
       const waitSecInput = card.querySelector(".wait-sec");
@@ -287,10 +297,10 @@
           city.pausedRemainingWaitSec = getConfiguredWaitSec(city);
           city.initialTotalWaitSec = city.pausedRemainingWaitSec;
         }
-        pushStateToServer();
+        schedulePushState();
       };
-      waitMinInput.addEventListener("change", syncWait);
-      waitSecInput.addEventListener("change", syncWait);
+      waitMinInput.addEventListener("input", syncWait);
+      waitSecInput.addEventListener("input", syncWait);
 
       card.querySelector(".start-btn").addEventListener("click", () => toggleStartCity(city.id));
       card.querySelector(".reset-btn").addEventListener("click", () => resetCity(city.id));
@@ -437,5 +447,5 @@
   loadMyMarchTime();
   pullStateFromServer(true);
   setInterval(updateDisplay, 100);
-  setInterval(() => pullStateFromServer(false), 2000);
+  setInterval(() => pullStateFromServer(false), 1000);
 })();
