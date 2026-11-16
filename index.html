@@ -1,1 +1,59 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ホワサバ 集結・差し込み共有タイマー</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="header">
+    <h1>❄️ ホワサバ 集結・差し込み共有タイマー</h1>
+    <p class="subtitle">URLを共有すると、入力した集結・行軍タイマーが全員にリアルタイム同期されます</p>
+  </header>
 
+  <main class="container">
+    <!-- 部屋（共有URL）コントロール -->
+    <section class="share-box">
+      <div class="share-info">
+        <span id="syncStatus" class="sync-badge">🔄 接続中...</span>
+        <span class="room-label">部屋ID: <strong id="roomIdDisplay">---</strong></span>
+      </div>
+      <div class="share-actions">
+        <button id="copyUrlBtn" class="btn btn-primary btn-sm">🔗 共有URLをコピー</button>
+        <button id="newRoomBtn" class="btn btn-ghost btn-sm">＋ 新しい部屋を作る</button>
+      </div>
+    </section>
+
+    <!-- 自分の行軍時間（端末ごとに個別保存） -->
+    <section class="my-march-box">
+      <div class="my-march-header">
+        <span class="badge">あなた専用（他の人には見えません）</span>
+        <h2>自分の行軍時間（対象までの移動時間）</h2>
+      </div>
+      <div class="time-inputs">
+        <label>
+          <input type="number" id="myMarchMin" min="0" max="99" value="0" /> 分
+        </label>
+        <label>
+          <input type="number" id="myMarchSec" min="0" max="59" value="0" /> 秒
+        </label>
+        <button id="clearMyMarch" class="btn btn-ghost btn-sm">クリア</button>
+      </div>
+      <p class="hint">※この数値はあなたのスマホ・PCだけに保存され、共有された各都市の着弾時間から「あなたが出発すべき残り時間」を自動計算します。</p>
+    </section>
+
+    <!-- コントロールバー（全員に同期） -->
+    <div class="toolbar">
+      <button id="addCityBtn" class="btn btn-primary">＋ 都市を追加</button>
+      <button id="startAllBtn" class="btn btn-success">▶ すべて開始</button>
+      <button id="resetAllBtn" class="btn btn-secondary">↺ すべてリセット</button>
+    </div>
+
+    <!-- 都市カード一覧（全員に同期） -->
+    <div id="cityList" class="city-grid"></div>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
