@@ -3,9 +3,8 @@
   const addCityBtn = document.getElementById("addCityBtn");
   const startAllBtn = document.getElementById("startAllBtn");
   const resetAllBtn = document.getElementById("resetAllBtn");
-  const myMarchMinEl = document.getElementById("myMarchMin");
-  const myMarchSecEl = document.getElementById("myMarchSec");
-  const clearMyMarchBtn = document.getElementById("clearMyMarch");
+  const myMarchListEl = document.getElementById("myMarchList");
+  const addMyMarchBtn = document.getElementById("addMyMarchBtn");
   const copyViewUrlBtn = document.getElementById("copyViewUrlBtn");
   const copyEditUrlBtn = document.getElementById("copyEditUrlBtn");
   const newRoomBtn = document.getElementById("newRoomBtn");
@@ -17,9 +16,11 @@
   const headerSubtitleEl = document.getElementById("headerSubtitle");
 
   let cities = [];
+  let myMarches = [];
   let lastSyncedUpdatedAt = 0;
   let lastLocalMutationAt = 0;
   let isSyncing = false;
+  let isDragging = false;
   let debounceTimer = null;
 
   // 1. 部屋IDとモード（編集 or 見るだけ）の取得
@@ -38,41 +39,116 @@
   }
   roomIdDisplay.textContent = roomId;
 
-  // 見るだけモード時のUI切り替え
   if (isViewMode) {
     modeBadgeEl.textContent = "👀 見るだけモード（閲覧専用）";
     modeBadgeEl.classList.add("view-only");
-    headerSubtitleEl.textContent = "自分の行軍時間を入力すると、開始された集結の発射タイミングを自動計算します";
+    headerSubtitleEl.textContent = "開始された集結が着弾の早い順に表示されます。自分の行軍時間を登録してください。";
     editShareActionsEl.style.display = "none";
     editToolbarEl.style.display = "none";
   }
 
-  // 2. 自分の行軍時間は各自の端末（localStorage）に保存
-  const MY_MARCH_STORAGE_KEY = "wos_my_march_time";
-  function loadMyMarchTime() {
-    try {
-      const saved = JSON.parse(localStorage.getItem(MY_MARCH_STORAGE_KEY));
-      if (saved) {
-        myMarchMinEl.value = saved.min || 0;
-        myMarchSecEl.value = saved.sec || 0;
-      }
-    } catch (_) {}
+  // 2. 自分の行軍時間（複数登録・各自の端末localStorageに保存）
+  const MY_MARCHES_STORAGE_KEY = "wos_my_marches_v2";
+  const LEGACY_MARCH_KEY = "wos_my_march_time";
+
+  function makeMyMarchObj(name = "", min = 0, sec = 0) {
+    return {
+      id: "m_" + Date.now().toString(36) + Math.random().toString(36).substring(2, 5),
+      name: name || `行軍 ${myMarches.length + 1}`,
+      min,
+      sec
+    };
   }
 
-  function saveMyMarchTime() {
-    const min = Math.max(0, parseInt(myMarchMinEl.value, 10) || 0);
-    const sec = Math.max(0, parseInt(myMarchSecEl.value, 10) || 0);
-    localStorage.setItem(MY_MARCH_STORAGE_KEY, JSON.stringify({ min, sec }));
+  function loadMyMarches() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(MY_MARCHES_STORAGE_KEY));
+      if (Array.isArray(saved) && saved.length > 0) {
+        myMarches = saved;
+      } else {
+        // 旧バージョンの保存データがあれば引き継ぎ
+        const legacy = JSON.parse(localStorage.getItem(LEGACY_MARCH_KEY));
+        if (legacy && (legacy.min > 0 || legacy.sec > 0)) {
+          myMarches = [makeMyMarchObj("行軍 1", legacy.min || 0, legacy.sec || 0)];
+        } else {
+          myMarches = [makeMyMarchObj("行軍 1", 0, 0)];
+        }
+      }
+    } catch (_) {
+      myMarches = [makeMyMarchObj("行軍 1", 0, 0)];
+    }
+    renderMyMarches();
+  }
+
+  function saveMyMarches() {
+    localStorage.setItem(MY_MARCHES_STORAGE_KEY, JSON.stringify(myMarches));
     updateDisplay();
   }
 
-  myMarchMinEl.addEventListener("input", saveMyMarchTime);
-  myMarchSecEl.addEventListener("input", saveMyMarchTime);
-  clearMyMarchBtn.addEventListener("click", () => {
-    myMarchMinEl.value = 0;
-    myMarchSecEl.value = 0;
-    saveMyMarchTime();
+  function renderMyMarches() {
+    myMarchListEl.innerHTML = "";
+    myMarches.forEach((march) => {
+      const row = document.createElement("div");
+      row.className = "my-march-item";
+      row.innerHTML = `
+        <input type="text" class="my-march-name" value="${escapeHtml(march.name)}" placeholder="部隊名など" />
+        <div class="time-inputs">
+          <label><input type="number" class="my-march-min" min="0" max="99" value="${march.min}" /> 分</label>
+          <label><input type="number" class="my-march-sec" min="0" max="59" value="${march.sec}" /> 秒</label>
+        </div>
+        <button class="btn btn-danger btn-sm btn-delete-march">削除</button>
+      `;
+
+      const nameEl = row.querySelector(".my-march-name");
+      const minEl = row.querySelector(".my-march-min");
+      const secEl = row.querySelector(".my-march-sec");
+      const delBtn = row.querySelector(".btn-delete-march");
+
+      nameEl.addEventListener("input", () => {
+        march.name = nameEl.value;
+        saveMyMarches();
+      });
+
+      const updateTime = () => {
+        march.min = Math.max(0, parseInt(minEl.value, 10) || 0);
+        march.sec = Math.max(0, parseInt(secEl.value, 10) || 0);
+        saveMyMarches();
+      };
+      minEl.addEventListener("input", updateTime);
+      secEl.addEventListener("input", updateTime);
+
+      delBtn.addEventListener("click", () => {
+        if (myMarches.length <= 1) {
+          march.min = 0;
+          march.sec = 0;
+          renderMyMarches();
+          saveMyMarches();
+        } else {
+          myMarches = myMarches.filter((m) => m.id !== march.id);
+          renderMyMarches();
+          saveMyMarches();
+        }
+      });
+
+      myMarchListEl.appendChild(row);
+    });
+  }
+
+  addMyMarchBtn.addEventListener("click", () => {
+    myMarches.push(makeMyMarchObj());
+    renderMyMarches();
+    saveMyMarches();
   });
+
+  function getActiveMyMarches() {
+    return myMarches
+      .map((m) => ({
+        id: m.id,
+        name: (m.name || "").trim() || "行軍",
+        totalSec: Math.max(0, m.min) * 60 + Math.max(0, m.sec)
+      }))
+      .filter((m) => m.totalSec > 0);
+  }
 
   // 3. 共有状態（cities）をサーバーへ即座に保存（編集モードのみ）
   async function pushStateToServer() {
@@ -105,7 +181,7 @@
 
   // 4. サーバーから最新の共有状態を取得（1秒ごとに自動同期）
   async function pullStateFromServer(isInitial = false) {
-    if (isSyncing) return;
+    if (isSyncing || isDragging) return;
     isSyncing = true;
     try {
       const res = await fetch(`/api/room/${encodeURIComponent(roomId)}`);
@@ -130,12 +206,11 @@
         const isTypingCard =
           !isViewMode &&
           activeEl?.tagName === "INPUT" &&
-          activeEl.id !== "myMarchMin" &&
-          activeEl.id !== "myMarchSec";
+          activeEl.closest(".city-card") !== null;
 
         cities = data.cities;
         lastSyncedUpdatedAt = data.updatedAt;
-        if (!isTypingCard) {
+        if (!isTypingCard && !isDragging) {
           renderCities();
         }
       }
@@ -168,12 +243,6 @@
     return `${minStr}:${String(Math.floor(secs)).padStart(2, "0")}`;
   }
 
-  function getMyMarchSeconds() {
-    const m = Math.max(0, parseInt(myMarchMinEl.value, 10) || 0);
-    const s = Math.max(0, parseInt(myMarchSecEl.value, 10) || 0);
-    return m * 60 + s;
-  }
-
   function makeCityObj(name = "") {
     return {
       id: Date.now().toString(36) + Math.random().toString(36).substring(2, 5),
@@ -195,6 +264,28 @@
 
   function getConfiguredMarchSec(city) {
     return Math.max(0, city.marchMin) * 60 + Math.max(0, city.marchSec);
+  }
+
+  // 都市の現在残り時間を計算
+  function calcCityTimes(city, now) {
+    const marchSec = getConfiguredMarchSec(city);
+    let currentWaitSec = city.pausedRemainingWaitSec;
+    let elapsedAfterWait = 0;
+
+    if (city.isRunning && city.startTimestamp !== null) {
+      const elapsed = (now - city.startTimestamp) / 1000;
+      const diff = city.initialTotalWaitSec - elapsed;
+      if (diff >= 0) {
+        currentWaitSec = diff;
+      } else {
+        currentWaitSec = 0;
+        elapsedAfterWait = Math.abs(diff);
+      }
+    }
+
+    const remainingMarchSec = Math.max(0, marchSec - elapsedAfterWait);
+    const arrivalRemainingSec = currentWaitSec + remainingMarchSec;
+    return { currentWaitSec, arrivalRemainingSec };
   }
 
   function addCity() {
@@ -241,10 +332,75 @@
     pushStateToServer();
   }
 
+  // 5. 編集画面用：ドラッグで都市の順番を並び替え（PC・スマホ両対応）
+  function attachDragHandler(handle, card) {
+    handle.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      isDragging = true;
+      card.classList.add("is-dragging");
+      handle.setPointerCapture(e.pointerId);
+
+      let lastSwappedCard = null;
+
+      const onPointerMove = (moveEvent) => {
+        const x = moveEvent.clientX;
+        const y = moveEvent.clientY;
+        const allCards = Array.from(cityListEl.querySelectorAll(".city-card"));
+
+        let hoveredCard = null;
+        for (const other of allCards) {
+          if (other === card) continue;
+          const rect = other.getBoundingClientRect();
+          if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+            hoveredCard = other;
+            break;
+          }
+        }
+
+        if (!hoveredCard) {
+          lastSwappedCard = null;
+          return;
+        }
+
+        if (hoveredCard === lastSwappedCard) return;
+
+        const currentIndex = allCards.indexOf(card);
+        const targetIndex = allCards.indexOf(hoveredCard);
+
+        if (currentIndex < targetIndex) {
+          hoveredCard.after(card);
+        } else {
+          hoveredCard.before(card);
+        }
+        lastSwappedCard = hoveredCard;
+      };
+
+      const onPointerUp = () => {
+        handle.removeEventListener("pointermove", onPointerMove);
+        handle.removeEventListener("pointerup", onPointerUp);
+        handle.removeEventListener("pointercancel", onPointerUp);
+
+        card.classList.remove("is-dragging");
+        isDragging = false;
+
+        // DOMの新しい並び順から cities 配列を更新してサーバー同期
+        const orderedIds = Array.from(cityListEl.querySelectorAll(".city-card")).map(
+          (el) => el.dataset.id
+        );
+        const cityMap = new Map(cities.map((c) => [c.id, c]));
+        cities = orderedIds.map((id) => cityMap.get(id)).filter(Boolean);
+        pushStateToServer();
+      };
+
+      handle.addEventListener("pointermove", onPointerMove);
+      handle.addEventListener("pointerup", onPointerUp);
+      handle.addEventListener("pointercancel", onPointerUp);
+    });
+  }
+
   function renderCities() {
     cityListEl.innerHTML = "";
 
-    // 見るだけモードは「カウントがスタートしている集結のみ」表示
     const targetCities = isViewMode
       ? cities.filter((c) => c.isRunning)
       : cities;
@@ -265,7 +421,7 @@
       card.dataset.id = city.id;
 
       if (isViewMode) {
-        // 【見るだけページ用】最小限のシンプル表示
+        // 【見るだけページ用】
         card.innerHTML = `
           <div class="card-top">
             <span class="city-title-view">${escapeHtml(city.name)}</span>
@@ -277,16 +433,14 @@
               <span class="arrival-label">相手の集結着弾まで</span>
               <span class="arrival-time" data-role="arrival">--:--.-</span>
             </div>
-            <div class="launch-alert view-mode-launch" data-role="launch-box">
-              <span>自分の発射まで</span>
-              <span data-role="launch-rem">--:--.-</span>
-            </div>
+            <div class="launch-list" data-role="launch-list"></div>
           </div>
         `;
       } else {
-        // 【編集ページ用】フル操作表示
+        // 【編集ページ用】ドラッグハンドル付き
         card.innerHTML = `
           <div class="card-top">
+            <span class="drag-handle" title="ドラッグして並び替え">☰</span>
             <input type="text" class="city-name-input" value="${escapeHtml(city.name)}" placeholder="都市名・集結主名" />
             <button class="btn btn-danger btn-sm delete-btn">削除</button>
           </div>
@@ -317,10 +471,7 @@
               <span>出発までの残り待ち時間</span>
               <strong data-role="wait-rem">--:--.-</strong>
             </div>
-            <div class="launch-alert" data-role="launch-box" style="display: none;">
-              <span>あなたの発射まで</span>
-              <span data-role="launch-rem">--:--.-</span>
-            </div>
+            <div class="launch-list" data-role="launch-list"></div>
           </div>
 
           <div class="card-actions">
@@ -330,6 +481,9 @@
             <button class="btn btn-secondary reset-btn">↺ リセット</button>
           </div>
         `;
+
+        const dragHandle = card.querySelector(".drag-handle");
+        attachDragHandler(dragHandle, card);
 
         const nameInput = card.querySelector(".city-name-input");
         nameInput.addEventListener("input", (e) => {
@@ -372,41 +526,106 @@
     updateDisplay();
   }
 
+  // カード内の複数行軍カウントダウンを更新
+  function updateCardLaunchList(launchListEl, activeMarches, arrivalRemainingSec) {
+    if (activeMarches.length === 0) {
+      if (isViewMode) {
+        if (!launchListEl.querySelector(".launch-placeholder")) {
+          launchListEl.innerHTML = `<div class="launch-placeholder">上で自分の行軍時間を入力すると発射時間を計算します</div>`;
+        }
+      } else {
+        if (launchListEl.innerHTML !== "") launchListEl.innerHTML = "";
+      }
+      return;
+    }
+
+    // 構成（行軍IDの組み合わせ）が変わった時だけDOMを作り直す
+    const signature = activeMarches.map((m) => `${m.id}:${m.name}`).join("|");
+    if (launchListEl.dataset.sig !== signature) {
+      launchListEl.dataset.sig = signature;
+      launchListEl.innerHTML = activeMarches
+        .map(
+          (m) => `
+          <div class="launch-alert ${isViewMode ? "view-mode-launch" : ""}" data-march-id="${m.id}">
+            <span class="launch-label">${escapeHtml(m.name)} (${formatTime(m.totalSec, false)})</span>
+            <span class="launch-val">--:--.-</span>
+          </div>
+        `
+        )
+        .join("");
+    }
+
+    activeMarches.forEach((m) => {
+      const box = launchListEl.querySelector(`.launch-alert[data-march-id="${m.id}"]`);
+      if (!box) return;
+      const valEl = box.querySelector(".launch-val");
+      const launchDiff = arrivalRemainingSec - m.totalSec;
+
+      if (arrivalRemainingSec <= 0) {
+        box.classList.remove("launch-now");
+        valEl.textContent = "着弾済み";
+      } else if (launchDiff > 0) {
+        box.classList.remove("launch-now");
+        valEl.textContent = `あと ${formatTime(launchDiff, true)}`;
+      } else if (launchDiff > -3) {
+        box.classList.add("launch-now");
+        valEl.textContent = "🔥 今すぐ発射！";
+      } else {
+        box.classList.remove("launch-now");
+        valEl.textContent = `${Math.abs(launchDiff).toFixed(1)}秒遅れ`;
+      }
+    });
+  }
+
   function updateDisplay() {
     const now = Date.now();
-    const myMarchSec = getMyMarchSeconds();
+    const activeMarches = getActiveMyMarches();
 
     const targetCities = isViewMode
       ? cities.filter((c) => c.isRunning)
       : cities;
 
-    targetCities.forEach((city) => {
+    // 各都市の時間を計算
+    const computed = targetCities.map((city) => ({
+      city,
+      ...calcCityTimes(city, now)
+    }));
+
+    // 【見るだけモード】着弾時間が早い順に自動並び替え（着弾完了は末尾へ）
+    if (isViewMode && computed.length > 1) {
+      computed.sort((a, b) => {
+        const aArrived = a.arrivalRemainingSec <= 0;
+        const bArrived = b.arrivalRemainingSec <= 0;
+        if (aArrived !== bArrived) return aArrived ? 1 : -1;
+        return a.arrivalRemainingSec - b.arrivalRemainingSec;
+      });
+
+      const currentDomIds = Array.from(cityListEl.querySelectorAll(".city-card")).map(
+        (el) => el.dataset.id
+      );
+      const desiredIds = computed.map((item) => item.city.id);
+
+      const orderChanged =
+        currentDomIds.length === desiredIds.length &&
+        desiredIds.some((id, idx) => currentDomIds[idx] !== id);
+
+      if (orderChanged) {
+        desiredIds.forEach((id) => {
+          const cardEl = cityListEl.querySelector(`.city-card[data-id="${id}"]`);
+          if (cardEl) cityListEl.appendChild(cardEl);
+        });
+      }
+    }
+
+    // 数値・ステータスの更新
+    computed.forEach(({ city, currentWaitSec, arrivalRemainingSec }) => {
       const card = cityListEl.querySelector(`.city-card[data-id="${city.id}"]`);
       if (!card) return;
-
-      const marchSec = getConfiguredMarchSec(city);
-      let currentWaitSec = city.pausedRemainingWaitSec;
-      let elapsedAfterWait = 0;
-
-      if (city.isRunning && city.startTimestamp !== null) {
-        const elapsed = (now - city.startTimestamp) / 1000;
-        const diff = city.initialTotalWaitSec - elapsed;
-        if (diff >= 0) {
-          currentWaitSec = diff;
-        } else {
-          currentWaitSec = 0;
-          elapsedAfterWait = Math.abs(diff);
-        }
-      }
-
-      const remainingMarchSec = Math.max(0, marchSec - elapsedAfterWait);
-      const arrivalRemainingSec = currentWaitSec + remainingMarchSec;
 
       const statusEl = card.querySelector('[data-role="status"]');
       const arrivalEl = card.querySelector('[data-role="arrival"]');
       const waitRemEl = card.querySelector('[data-role="wait-rem"]');
-      const launchBoxEl = card.querySelector('[data-role="launch-box"]');
-      const launchRemEl = card.querySelector('[data-role="launch-rem"]');
+      const launchListEl = card.querySelector('[data-role="launch-list"]');
 
       card.classList.remove("is-running", "is-marching", "is-arrived");
       statusEl.className = "status-badge";
@@ -434,30 +653,7 @@
         waitRemEl.textContent = formatTime(currentWaitSec, true);
       }
 
-      // 自分の発射までのカウントダウン表示
-      if (isViewMode && myMarchSec <= 0) {
-        launchBoxEl.style.display = "flex";
-        launchBoxEl.classList.remove("launch-now");
-        launchRemEl.textContent = "上で自分の行軍時間を入力";
-      } else if (myMarchSec > 0) {
-        launchBoxEl.style.display = "flex";
-        const launchDiff = arrivalRemainingSec - myMarchSec;
-        if (arrivalRemainingSec <= 0) {
-          launchBoxEl.classList.remove("launch-now");
-          launchRemEl.textContent = "着弾済み";
-        } else if (launchDiff > 0) {
-          launchBoxEl.classList.remove("launch-now");
-          launchRemEl.textContent = `あと ${formatTime(launchDiff, true)}`;
-        } else if (launchDiff > -3) {
-          launchBoxEl.classList.add("launch-now");
-          launchRemEl.textContent = "🔥 今すぐ発射！";
-        } else {
-          launchBoxEl.classList.remove("launch-now");
-          launchRemEl.textContent = `タイミング経過 (${Math.abs(launchDiff).toFixed(1)}秒遅れ)`;
-        }
-      } else {
-        launchBoxEl.style.display = "none";
-      }
+      updateCardLaunchList(launchListEl, activeMarches, arrivalRemainingSec);
     });
   }
 
@@ -469,7 +665,6 @@
       .replace(/"/g, "&quot;");
   }
 
-  // URLコピー用ヘルパー
   function buildShareUrl(mode) {
     const shareUrl = new URL(window.location.origin + window.location.pathname);
     shareUrl.searchParams.set("room", roomId);
@@ -536,7 +731,7 @@
   }
 
   // 初期化実行
-  loadMyMarchTime();
+  loadMyMarches();
   pullStateFromServer(true);
   setInterval(updateDisplay, 100);
   setInterval(() => pullStateFromServer(false), 1000);
