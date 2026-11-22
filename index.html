@@ -27,22 +27,17 @@
       </div>
     </section>
 
-    <!-- 自分の行軍時間（両モード共通・端末ごとに個別保存） -->
+    <!-- 自分の行軍時間（複数登録対応・端末ごとに個別保存） -->
     <section class="my-march-box">
-      <div class="my-march-header">
-        <span class="badge">あなた専用（他の人には見えません）</span>
-        <h2>自分の行軍時間（対象までの移動時間）</h2>
+      <div class="my-march-top">
+        <div class="my-march-header">
+          <span class="badge">あなた専用（他の人には見えません）</span>
+          <h2>自分の行軍時間（複数登録可）</h2>
+        </div>
+        <button id="addMyMarchBtn" class="btn btn-primary btn-sm">＋ 行軍を追加</button>
       </div>
-      <div class="time-inputs">
-        <label>
-          <input type="number" id="myMarchMin" min="0" max="99" value="0" /> 分
-        </label>
-        <label>
-          <input type="number" id="myMarchSec" min="0" max="59" value="0" /> 秒
-        </label>
-        <button id="clearMyMarch" class="btn btn-ghost btn-sm">クリア</button>
-      </div>
-      <p class="hint">※この数値はあなたのスマホ・PCだけに保存され、各集結の着弾時間から「あなたが出発すべき残り時間」を自動計算します。</p>
+      <div id="myMarchList" class="my-march-list"></div>
+      <p class="hint">※登録した行軍ごとに、各都市カードへ「発射までの残り時間」を別々に表示します。</p>
     </section>
 
     <!-- コントロールバー（編集モードのみ表示） -->
@@ -50,6 +45,7 @@
       <button id="addCityBtn" class="btn btn-primary">＋ 都市を追加</button>
       <button id="startAllBtn" class="btn btn-success">▶ すべて開始</button>
       <button id="resetAllBtn" class="btn btn-secondary">↺ すべてリセット</button>
+      <span class="toolbar-hint">※カードの ☰ をドラッグして並び替え</span>
     </div>
 
     <!-- 都市カード一覧 -->
