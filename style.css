@@ -108,7 +108,7 @@ body {
   flex-wrap: wrap;
 }
 
-/* 自分の行軍時間ボックス */
+/* 自分の行軍時間ボックス（複数対応） */
 .my-march-box {
   background-color: var(--card-bg);
   border: 1px solid #0284c7;
@@ -117,11 +117,19 @@ body {
   margin-bottom: 1rem;
 }
 
+.my-march-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.7rem;
+}
+
 .my-march-header {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-bottom: 0.5rem;
   flex-wrap: wrap;
 }
 
@@ -138,18 +146,73 @@ body {
   font-weight: bold;
 }
 
+.my-march-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.my-march-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  background-color: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 0.5rem 0.65rem;
+}
+
+.my-march-name {
+  background-color: #1e293b;
+  border: 1px solid var(--card-border);
+  color: var(--text);
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 0.35rem 0.55rem;
+  border-radius: 6px;
+  width: 130px;
+  flex-shrink: 0;
+}
+
+.my-march-name:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.my-march-item .time-inputs {
+  gap: 0.4rem;
+}
+
+.my-march-item .time-inputs input[type="number"] {
+  width: 58px;
+  padding: 0.32rem;
+  font-size: 0.95rem;
+}
+
+.my-march-item .btn-delete-march {
+  margin-left: auto;
+}
+
 .hint {
   font-size: 0.78rem;
   color: var(--text-muted);
-  margin-top: 0.4rem;
+  margin-top: 0.5rem;
 }
 
 /* ツールバー */
 .toolbar {
   display: flex;
+  align-items: center;
   gap: 0.6rem;
   margin-bottom: 1.2rem;
   flex-wrap: wrap;
+}
+
+.toolbar-hint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-left: auto;
 }
 
 /* ボタン共通 */
@@ -168,8 +231,8 @@ body {
 }
 
 .btn-sm {
-  padding: 0.4rem 0.75rem;
-  font-size: 0.82rem;
+  padding: 0.38rem 0.7rem;
+  font-size: 0.8rem;
 }
 
 .btn-primary {
@@ -229,7 +292,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, transform 0.15s, box-shadow 0.15s;
 }
 
 .city-card.is-running {
@@ -242,6 +305,16 @@ body {
 
 .city-card.is-arrived {
   border-color: var(--danger);
+  opacity: 0.75;
+}
+
+/* ドラッグ中の強調スタイル */
+.city-card.is-dragging {
+  opacity: 0.65;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.35);
+  transform: scale(1.02);
+  z-index: 10;
 }
 
 .card-top {
@@ -249,6 +322,29 @@ body {
   justify-content: space-between;
   align-items: center;
   gap: 0.5rem;
+}
+
+.drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 36px;
+  background-color: #0f172a;
+  border: 1px solid var(--card-border);
+  border-radius: 6px;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+  flex-shrink: 0;
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+  color: var(--primary);
+  border-color: var(--primary);
 }
 
 .city-name-input {
@@ -358,31 +454,49 @@ body {
   border-top: 1px dashed #334155;
 }
 
-/* 見るだけモード時の強調表示 */
+/* 複数行軍の発射タイマー一覧 */
+.launch-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.55rem;
+}
+
 .launch-alert {
-  margin-top: 0.6rem;
-  padding: 0.55rem 0.75rem;
+  padding: 0.48rem 0.7rem;
   border-radius: 6px;
   background-color: #1e293b;
   border: 1px solid #334155;
-  font-size: 0.9rem;
+  font-size: 0.86rem;
   font-weight: 700;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 0.5rem;
+}
+
+.launch-label {
+  color: #e2e8f0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.launch-val {
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
 }
 
 .launch-alert.view-mode-launch {
-  font-size: 1.05rem;
-  padding: 0.7rem 0.85rem;
+  font-size: 0.98rem;
+  padding: 0.6rem 0.8rem;
   background-color: #0c4a6e;
   border-color: #0284c7;
 }
 
-.launch-alert.view-mode-launch [data-role="launch-rem"] {
-  font-size: 1.35rem;
+.launch-alert.view-mode-launch .launch-val {
+  font-size: 1.25rem;
   font-weight: 800;
-  font-variant-numeric: tabular-nums;
   color: #fff;
 }
 
@@ -391,6 +505,15 @@ body {
   border-color: #f87171 !important;
   color: #fff !important;
   animation: pulse 0.8s infinite alternate;
+}
+
+.launch-placeholder {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 0.5rem;
+  background-color: #1e293b;
+  border-radius: 6px;
 }
 
 @keyframes pulse {
