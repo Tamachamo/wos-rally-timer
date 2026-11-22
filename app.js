@@ -66,7 +66,6 @@
       if (Array.isArray(saved) && saved.length > 0) {
         myMarches = saved;
       } else {
-        // 旧バージョンの保存データがあれば引き継ぎ
         const legacy = JSON.parse(localStorage.getItem(LEGACY_MARCH_KEY));
         if (legacy && (legacy.min > 0 || legacy.sec > 0)) {
           myMarches = [makeMyMarchObj("行軍 1", legacy.min || 0, legacy.sec || 0)];
@@ -266,7 +265,6 @@
     return Math.max(0, city.marchMin) * 60 + Math.max(0, city.marchSec);
   }
 
-  // 都市の現在残り時間を計算
   function calcCityTimes(city, now) {
     const marchSec = getConfiguredMarchSec(city);
     let currentWaitSec = city.pausedRemainingWaitSec;
@@ -332,69 +330,143 @@
     pushStateToServer();
   }
 
-  // 5. 編集画面用：ドラッグで都市の順番を並び替え（PC・スマホ両対応）
+  // 5. 編集画面用：自由に動かせるドラッグ並び替え（ゴースト追従＋自動スクロール）
   function attachDragHandler(handle, card) {
     handle.addEventListener("pointerdown", (e) => {
+      if (e.button !== undefined && e.button !== 0) return;
       e.preventDefault();
+
       isDragging = true;
-      card.classList.add("is-dragging");
-      handle.setPointerCapture(e.pointerId);
+      document.body.classList.add("is-dragging-any");
 
-      let lastSwappedCard = null;
+      const pointerId = e.pointerId;
+      const startRect = card.getBoundingClientRect();
+      const offsetX = e.clientX - startRect.left;
+      const offsetY = e.clientY - startRect.top;
 
-      const onPointerMove = (moveEvent) => {
-        const x = moveEvent.clientX;
-        const y = moveEvent.clientY;
+      // マウス/指に追従する浮遊クローンを作成
+      const ghost = card.cloneNode(true);
+      ghost.classList.remove("is-drag-placeholder");
+      ghost.classList.add("drag-ghost");
+      ghost.style.width = `${startRect.width}px`;
+      ghost.style.height = `${startRect.height}px`;
+      ghost.style.transform = `translate3d(${startRect.left}px, ${startRect.top}px, 0) scale(1.02)`;
+      document.body.appendChild(ghost);
+
+      // 元のカードは移動先の青い破線プレースホルダーにする
+      card.classList.add("is-drag-placeholder");
+
+      let pointerX = e.clientX;
+      let pointerY = e.clientY;
+      let scrollRafId = null;
+
+      // 現在のポインター位置から最も自然な挿入位置を計算して入れ替え
+      const reorderPlaceholder = (x, y) => {
         const allCards = Array.from(cityListEl.querySelectorAll(".city-card"));
+        if (allCards.length <= 1) return;
 
-        let hoveredCard = null;
+        // 1. ポインターが他のカードの矩形内にあるか確認
+        let targetCard = null;
         for (const other of allCards) {
           if (other === card) continue;
-          const rect = other.getBoundingClientRect();
-          if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
-            hoveredCard = other;
+          const r = other.getBoundingClientRect();
+          if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) {
+            targetCard = other;
             break;
           }
         }
 
-        if (!hoveredCard) {
-          lastSwappedCard = null;
+        // 2. 隙間や余白にある場合は、最も近いカードとの位置関係で先頭・末尾などへ移動
+        if (!targetCard) {
+          const first = allCards[0];
+          const last = allCards[allCards.length - 1];
+          const firstRect = first.getBoundingClientRect();
+          const lastRect = last.getBoundingClientRect();
+
+          if (y < firstRect.top || (y <= firstRect.bottom && x < firstRect.left)) {
+            if (first !== card) first.before(card);
+            return;
+          }
+          if (y > lastRect.bottom || (y >= lastRect.top && x > lastRect.right)) {
+            if (last !== card) last.after(card);
+            return;
+          }
           return;
         }
 
-        if (hoveredCard === lastSwappedCard) return;
-
         const currentIndex = allCards.indexOf(card);
-        const targetIndex = allCards.indexOf(hoveredCard);
-
+        const targetIndex = allCards.indexOf(targetCard);
         if (currentIndex < targetIndex) {
-          hoveredCard.after(card);
+          targetCard.after(card);
         } else {
-          hoveredCard.before(card);
+          targetCard.before(card);
         }
-        lastSwappedCard = hoveredCard;
       };
 
-      const onPointerUp = () => {
-        handle.removeEventListener("pointermove", onPointerMove);
-        handle.removeEventListener("pointerup", onPointerUp);
-        handle.removeEventListener("pointercancel", onPointerUp);
+      // 画面の上下端での自動スクロール
+      const autoScrollLoop = () => {
+        if (!isDragging) return;
+        const edge = 70;
+        const maxSpeed = 14;
+        let dy = 0;
 
-        card.classList.remove("is-dragging");
+        if (pointerY < edge) {
+          dy = -Math.ceil(((edge - pointerY) / edge) * maxSpeed);
+        } else if (pointerY > window.innerHeight - edge) {
+          dy = Math.ceil(((pointerY - (window.innerHeight - edge)) / edge) * maxSpeed);
+        }
+
+        if (dy !== 0) {
+          window.scrollBy(0, dy);
+          reorderPlaceholder(pointerX, pointerY);
+        }
+        scrollRafId = requestAnimationFrame(autoScrollLoop);
+      };
+      scrollRafId = requestAnimationFrame(autoScrollLoop);
+
+      const onPointerMove = (moveEvent) => {
+        if (moveEvent.pointerId !== pointerId) return;
+        pointerX = moveEvent.clientX;
+        pointerY = moveEvent.clientY;
+
+        ghost.style.transform = `translate3d(${pointerX - offsetX}px, ${pointerY - offsetY}px, 0) scale(1.02)`;
+        reorderPlaceholder(pointerX, pointerY);
+      };
+
+      const finishDrag = (endEvent) => {
+        if (endEvent && endEvent.pointerId !== undefined && endEvent.pointerId !== pointerId) {
+          return;
+        }
+
+        window.removeEventListener("pointermove", onPointerMove);
+        window.removeEventListener("pointerup", finishDrag);
+        window.removeEventListener("pointercancel", finishDrag);
+        window.removeEventListener("blur", finishDrag);
+
+        if (scrollRafId !== null) cancelAnimationFrame(scrollRafId);
+        if (ghost.parentNode) ghost.parentNode.removeChild(ghost);
+
+        card.classList.remove("is-drag-placeholder");
+        document.body.classList.remove("is-dragging-any");
         isDragging = false;
 
-        // DOMの新しい並び順から cities 配列を更新してサーバー同期
+        // DOMの新しい並び順から cities 配列を更新
         const orderedIds = Array.from(cityListEl.querySelectorAll(".city-card")).map(
           (el) => el.dataset.id
         );
         const cityMap = new Map(cities.map((c) => [c.id, c]));
         cities = orderedIds.map((id) => cityMap.get(id)).filter(Boolean);
+
+        // 枠の色や表示を即座に再反映し、サーバーへ同期
+        updateDisplay();
         pushStateToServer();
       };
 
-      handle.addEventListener("pointermove", onPointerMove);
-      handle.addEventListener("pointerup", onPointerUp);
-      handle.addEventListener("pointercancel", onPointerUp);
+      // window に登録することで DOM 移動中も絶対にイベントが途切れない
+      window.addEventListener("pointermove", onPointerMove);
+      window.addEventListener("pointerup", finishDrag);
+      window.addEventListener("pointercancel", finishDrag);
+      window.addEventListener("blur", finishDrag);
     });
   }
 
@@ -526,7 +598,6 @@
     updateDisplay();
   }
 
-  // カード内の複数行軍カウントダウンを更新
   function updateCardLaunchList(launchListEl, activeMarches, arrivalRemainingSec) {
     if (activeMarches.length === 0) {
       if (isViewMode) {
@@ -539,7 +610,6 @@
       return;
     }
 
-    // 構成（行軍IDの組み合わせ）が変わった時だけDOMを作り直す
     const signature = activeMarches.map((m) => `${m.id}:${m.name}`).join("|");
     if (launchListEl.dataset.sig !== signature) {
       launchListEl.dataset.sig = signature;
@@ -585,7 +655,6 @@
       ? cities.filter((c) => c.isRunning)
       : cities;
 
-    // 各都市の時間を計算
     const computed = targetCities.map((city) => ({
       city,
       ...calcCityTimes(city, now)
@@ -617,7 +686,6 @@
       }
     }
 
-    // 数値・ステータスの更新
     computed.forEach(({ city, currentWaitSec, arrivalRemainingSec }) => {
       const card = cityListEl.querySelector(`.city-card[data-id="${city.id}"]`);
       if (!card) return;
@@ -674,7 +742,6 @@
     return shareUrl.toString();
   }
 
-  // イベント登録（編集モード用）
   if (!isViewMode) {
     addCityBtn.addEventListener("click", addCity);
 
@@ -730,7 +797,6 @@
     });
   }
 
-  // 初期化実行
   loadMyMarches();
   pullStateFromServer(true);
   setInterval(updateDisplay, 100);
